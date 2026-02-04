@@ -1,0 +1,16 @@
+C:\Users\TR\Desktop\bank-app\bank-api\BankApi.Application\bin\Debug\net9.0\BankApi.Application.deps.json
+C:\Users\TR\Desktop\bank-app\bank-api\BankApi.Application\bin\Debug\net9.0\BankApi.Application.dll
+C:\Users\TR\Desktop\bank-app\bank-api\BankApi.Application\bin\Debug\net9.0\BankApi.Application.pdb
+C:\Users\TR\Desktop\bank-app\bank-api\BankApi.Application\bin\Debug\net9.0\BankApi.Domain.dll
+C:\Users\TR\Desktop\bank-app\bank-api\BankApi.Application\bin\Debug\net9.0\BankApi.Domain.pdb
+C:\Users\TR\Desktop\bank-app\bank-api\BankApi.Application\obj\Debug\net9.0\BankApi.Application.csproj.AssemblyReference.cache
+C:\Users\TR\Desktop\bank-app\bank-api\BankApi.Application\obj\Debug\net9.0\BankApi.Application.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\TR\Desktop\bank-app\bank-api\BankApi.Application\obj\Debug\net9.0\BankApi.Application.AssemblyInfoInputs.cache
+C:\Users\TR\Desktop\bank-app\bank-api\BankApi.Application\obj\Debug\net9.0\BankApi.Application.AssemblyInfo.cs
+C:\Users\TR\Desktop\bank-app\bank-api\BankApi.Application\obj\Debug\net9.0\BankApi.Application.csproj.CoreCompileInputs.cache
+C:\Users\TR\Desktop\bank-app\bank-api\BankApi.Application\obj\Debug\net9.0\BankApi.Application.sourcelink.json
+C:\Users\TR\Desktop\bank-app\bank-api\BankApi.Application\obj\Debug\net9.0\BankApi..AB838580.Up2Date
+C:\Users\TR\Desktop\bank-app\bank-api\BankApi.Application\obj\Debug\net9.0\BankApi.Application.dll
+C:\Users\TR\Desktop\bank-app\bank-api\BankApi.Application\obj\Debug\net9.0\refint\BankApi.Application.dll
+C:\Users\TR\Desktop\bank-app\bank-api\BankApi.Application\obj\Debug\net9.0\BankApi.Application.pdb
+C:\Users\TR\Desktop\bank-app\bank-api\BankApi.Application\obj\Debug\net9.0\ref\BankApi.Application.dll
