@@ -1,0 +1,36 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using BankApi.Domain.Entities;
+using Microsoft.EntityFrameworkCore;
+
+namespace BankApi.Infrastructure.Persistence
+{
+    public class BankaDbContext : DbContext
+    {
+        public BankaDbContext(DbContextOptions<BankaDbContext> options) : base(options) { }
+        public DbSet<Customer> Customers => Set<Customer>();
+        public DbSet<Account> Accounts => Set<Account>();
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+
+            modelBuilder.Entity<Customer>(b =>
+            {
+                b.HasKey(x => x.Id);
+                b.Property(x => x.FirstName).IsRequired().HasMaxLength(200);
+
+            });
+            modelBuilder.Entity<Account>(b =>
+            {
+                b.HasKey(x => x.Id);
+                b.Property(x => x.Iban).IsRequired().HasMaxLength(34);
+            });
+
+        }
+
+    }
+}
