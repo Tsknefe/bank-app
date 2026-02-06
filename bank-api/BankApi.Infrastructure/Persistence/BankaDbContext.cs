@@ -13,10 +13,13 @@ namespace BankApi.Infrastructure.Persistence
         public BankaDbContext(DbContextOptions<BankaDbContext> options) : base(options) { }
         public DbSet<Customer> Customers => Set<Customer>();
         public DbSet<Account> Accounts => Set<Account>();
+        public DbSet<User> Users => Set<User>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+            modelBuilder.ApplyConfigurationsFromAssembly(typeof(BankaDbContext).Assembly);
+
 
             modelBuilder.Entity<Customer>(b =>
             {
