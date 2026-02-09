@@ -32,6 +32,7 @@ namespace BankApi.Infrastructure.Persistence
                 b.HasKey(x => x.Id);
                 b.Property(x => x.Iban).IsRequired().HasMaxLength(34);
             });
+            modelBuilder.Entity<Customer>().HasQueryFilter(x => x.IsActive);
 
         }
 
