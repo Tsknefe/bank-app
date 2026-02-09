@@ -2,6 +2,7 @@
 using BankApi.Application.Auth.Security;
 using BankApi.Domain.Entities;
 using BankApi.Infrastructure.Persistence;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Migrations.Operations.Builders;
@@ -74,6 +75,21 @@ namespace BankApi.Api.Controller
                 signingCredentials: creds
                 );
             return new JwtSecurityTokenHandler().WriteToken(token);
+        }
+        [Authorize]
+        [HttpGet("me")]
+        public IActionResult Me()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var userName = User.FindFirstValue(ClaimTypes.Name);
+
+            return Ok(
+                new
+                {
+                    userId,
+                    userName,
+                    isAuthenticated = User.Identity?.IsAuthenticated ?? false,
+                });
         }
     }
 }
