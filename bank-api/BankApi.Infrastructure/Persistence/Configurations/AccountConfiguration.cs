@@ -7,6 +7,8 @@ using System.Linq;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading.Tasks;
+using Npgsql.EntityFrameworkCore.PostgreSQL;
+
 
 namespace BankApi.Infrastructure.Persistence.Configurations
 {
@@ -32,8 +34,13 @@ namespace BankApi.Infrastructure.Persistence.Configurations
             builder.Property(x => x.IsActive)
                 .HasDefaultValue(true);
 
+            builder.Property(x => x.xmin)
+                   .IsRowVersion();
+
+
             builder.Property(x => x.AccountType)
                 .IsRequired();
+
 
             builder.HasOne(x=>x.Customer)
                 .WithMany(c=>c.Accounts)

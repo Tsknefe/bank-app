@@ -83,6 +83,14 @@ public class AccountsController : ControllerBase
             return BadRequest("Account is not active.");
 
         account.Balance += req.Amount;
+        _context.Transactions.Add(new Transaction
+        {
+            AccountId = account.Id,
+            Type = TransactionType.Deposit,
+            Amount = req.Amount,
+            Description = "Deposit"
+        }
+            );
 
         await _context.SaveChangesAsync(ct);
 
@@ -110,6 +118,14 @@ public class AccountsController : ControllerBase
             return BadRequest("Insufficient balance.");
 
         account.Balance -= req.Amount;
+        _context.Transactions.Add(new Transaction
+        {
+            AccountId = account.Id,
+            Type = TransactionType.Withdraw,
+            Amount = req.Amount,
+            Description = "Withdraw"
+        });
+
 
         await _context.SaveChangesAsync(ct);
 
@@ -132,33 +148,72 @@ public class AccountsController : ControllerBase
 
         await using var tx = await _context.Database.BeginTransactionAsync(ct);
 
-        var from = await _context.Accounts.FirstOrDefaultAsync(x => x.Id == req.FromAccountId, ct);
-        if (from is null) return NotFound("From account not found.");
-        if (!from.IsActive) return BadRequest("From account is not active.");
-
-        var to = await _context.Accounts.FirstOrDefaultAsync(x => x.Id == req.ToAccountId, ct);
-        if (to is null) return NotFound("To account not found.");
-        if (!to.IsActive) return BadRequest("To account is not active.");
-
-        if (from.Balance < req.Amount)
-            return BadRequest("Insufficient balance.");
-
-        from.Balance -= req.Amount;
-        to.Balance += req.Amount;
-
-        await _context.SaveChangesAsync(ct);
-        await tx.CommitAsync(ct);
-
-        return Ok(new
+        try
         {
-            fromAccountId = from.Id,
-            toAccountId = to.Id,
-            amount = req.Amount,
-            fromBalance = from.Balance,
-            toBalance = to.Balance,
-            message = "Transfer successful."
-        });
+            var ids = new[] { req.FromAccountId, req.ToAccountId }.OrderBy(x => x).ToArray();
+
+            var accounts = await _context.Accounts
+                .Where(a => ids.Contains(a.Id))
+                .ToListAsync(ct);
+
+            if (accounts.Count != 2)
+                return NotFound("One or both accounts not found.");
+
+            var from = accounts.Single(a => a.Id == req.FromAccountId);
+            var to = accounts.Single(a => a.Id == req.ToAccountId);
+
+            if (!from.IsActive) return BadRequest("From account is not active.");
+            if (!to.IsActive) return BadRequest("To account is not active.");
+
+            if (from.Balance < req.Amount)
+                return BadRequest("Insufficient balance.");
+
+            from.Balance -= req.Amount;
+            to.Balance += req.Amount;
+
+            _context.Transactions.Add(new Transaction
+            {
+                AccountId = from.Id,
+                RelatedAccountId = to.Id,
+                Type = TransactionType.TransferOut,
+                Amount = req.Amount,
+                Description = req.Description ?? "Transfer Out"
+            });
+
+            _context.Transactions.Add(new Transaction
+            {
+                AccountId = to.Id,
+                RelatedAccountId = from.Id,
+                Type = TransactionType.TransferIn,
+                Amount = req.Amount,
+                Description = req.Description ?? "Transfer In"
+            });
+
+            await _context.SaveChangesAsync(ct);
+            await tx.CommitAsync(ct);
+
+            return Ok(new
+            {
+                fromAccountId = from.Id,
+                toAccountId = to.Id,
+                amount = req.Amount,
+                fromBalance = from.Balance,
+                toBalance = to.Balance,
+                message = "Transfer successful."
+            });
+        }
+        catch (OperationCanceledException)
+        {
+            await tx.RollbackAsync(CancellationToken.None);
+            throw;
+        }
+        catch (Exception)
+        {
+            await tx.RollbackAsync(ct);
+            throw;
+        }
     }
+
     [HttpPatch("{id:guid}/deactivate")]
     public async Task<IActionResult> Deactivate(Guid id, CancellationToken ct)
     {
@@ -180,4 +235,26 @@ public class AccountsController : ControllerBase
         account.IsActive = true;
         await _context.SaveChangesAsync(ct); return Ok(new { account.Id, account.IsActive });
     }
+    [HttpGet("{id:guid}/transactions")]
+    public async Task<IActionResult> GetTransactions(
+    [FromRoute] Guid id,
+    [FromQuery] int skip = 0,
+    [FromQuery] int take = 50,
+    CancellationToken ct = default)
+    {
+        if (take <= 0 || take > 200) take = 50;
+
+        var exists = await _context.Accounts.AnyAsync(x => x.Id == id, ct);
+        if (!exists) return NotFound("Account not found.");
+
+        var txs = await _context.Transactions
+            .Where(x => x.AccountId == id)
+            .OrderByDescending(x => x.CreatedAt)
+            .Skip(skip)
+            .Take(take)
+            .ToListAsync(ct);
+
+        return Ok(txs);
+    }
+
 }

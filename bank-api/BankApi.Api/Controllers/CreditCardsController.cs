@@ -1,0 +1,174 @@
+﻿using BankApi.Application.Auth.Dtos;
+using BankApi.Domain.Entities;
+using BankApi.Infrastructure.Persistence;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+
+namespace BankApi.Api.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+public class CreditCardsController : ControllerBase
+{
+    private readonly BankaDbContext _context;
+
+    public CreditCardsController(BankaDbContext context)
+    {
+        _context = context;
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> Create([FromBody] CreateCreditCardRequest req, CancellationToken ct)
+    {
+        if (req.CustomerId == Guid.Empty)
+            return BadRequest("CustomerId zorunludur.");
+
+        if (string.IsNullOrWhiteSpace(req.CardNo) || req.CardNo.Trim().Length != 16)
+            return BadRequest("CardNo 16 haneli olmalıdır.");
+
+        if (string.IsNullOrWhiteSpace(req.Cvv) || req.Cvv.Trim().Length != 3)
+            return BadRequest("CVV 3 haneli olmalıdır.");
+
+        if (req.Limit <= 0)
+            return BadRequest("Limit 0'dan büyük olmalıdır.");
+
+        var customerExists = await _context.Customers
+            .AnyAsync(x => x.Id == req.CustomerId && x.IsActive, ct);
+
+        if (!customerExists)
+            return NotFound("Customer bulunamadı veya pasif.");
+
+        var cardNo = req.CardNo.Trim();
+
+        var cardNoExists = await _context.CreditCards
+            .AnyAsync(x => x.CardNo == cardNo, ct);
+
+        if (cardNoExists)
+            return Conflict("Bu CardNo zaten kayıtlı.");
+
+        var card = new CreditCard
+        {
+            CustomerId = req.CustomerId,
+            CardNo = cardNo,
+            Cvv = req.Cvv.Trim(),
+            ExpireAt = req.ExpireAt,
+            Limit = req.Limit,
+            CurrentDebt = 0m,
+            IsActive = true
+        };
+
+        _context.CreditCards.Add(card);
+        await _context.SaveChangesAsync(ct);
+
+        var res = ToResponse(card);
+        return CreatedAtAction(nameof(GetById), new { id = card.Id }, res);
+    }
+
+    [HttpGet("{id:guid}")]
+    public async Task<IActionResult> GetById([FromRoute] Guid id, CancellationToken ct)
+    {
+        var card = await _context.CreditCards.FirstOrDefaultAsync(x => x.Id == id, ct);
+        if (card is null) return NotFound();
+
+        return Ok(ToResponse(card));
+    }
+
+    [HttpGet("by-customer/{customerId:guid}")]
+    public async Task<IActionResult> GetByCustomer([FromRoute] Guid customerId, CancellationToken ct)
+    {
+        var cards = await _context.CreditCards
+            .Where(x => x.CustomerId == customerId)
+            .OrderByDescending(x => x.Id)
+            .ToListAsync(ct);
+
+        return Ok(cards.Select(ToResponse));
+    }
+
+    [HttpPatch("{id:guid}/deactivate")]
+    public async Task<IActionResult> Deactivate([FromRoute] Guid id, CancellationToken ct)
+    {
+        var card = await _context.CreditCards.FirstOrDefaultAsync(x => x.Id == id, ct);
+        if (card is null) return NotFound();
+
+        card.IsActive = false;
+        await _context.SaveChangesAsync(ct);
+
+        return Ok(new { card.Id, card.IsActive, message = "CreditCard deactivated." });
+    }
+
+    [HttpPatch("{id:guid}/activate")]
+    public async Task<IActionResult> Activate([FromRoute] Guid id, CancellationToken ct)
+    {
+        var card = await _context.CreditCards.FirstOrDefaultAsync(x => x.Id == id, ct);
+        if (card is null) return NotFound();
+
+        card.IsActive = true;
+        await _context.SaveChangesAsync(ct);
+
+        return Ok(new { card.Id, card.IsActive, message = "CreditCard activated." });
+    }
+
+    [HttpPost("{id:guid}/spend")]
+    public async Task<IActionResult> Spend([FromRoute] Guid id, [FromBody] CreditCardSpendRequest req, CancellationToken ct)
+    {
+        if (req.Amount <= 0)
+            return BadRequest("Amount 0'dan büyük olmalıdır.");
+
+        await using var tx = await _context.Database.BeginTransactionAsync(ct);
+
+        var card = await _context.CreditCards.FirstOrDefaultAsync(x => x.Id == id, ct);
+        if (card is null) return NotFound("CreditCard not found.");
+        if (!card.IsActive) return BadRequest("CreditCard is not active.");
+
+        var newDebt = card.CurrentDebt + req.Amount;
+        if (newDebt > card.Limit)
+            return BadRequest($"Limit exceeded. Limit={card.Limit}, CurrentDebt={card.CurrentDebt}, Amount={req.Amount}");
+
+        card.CurrentDebt = newDebt;
+
+        await _context.SaveChangesAsync(ct);
+        await tx.CommitAsync(ct);
+
+        return Ok(new
+        {
+            cardId = card.Id,
+            amount = req.Amount,
+            card.Limit,
+            card.CurrentDebt,
+            message = "Spend successful."
+        });
+    }
+
+
+    [HttpPost("{id:guid}/pay")]
+    public async Task<IActionResult> Pay([FromRoute] Guid id, [FromBody] CreditCardPayRequest req, CancellationToken ct)
+    {
+        if (req.Amount <= 0)
+            return BadRequest("Amount 0'dan büyük olmalıdır.");
+
+        await using var tx = await _context.Database.BeginTransactionAsync(ct);
+
+        var card = await _context.CreditCards.FirstOrDefaultAsync(x => x.Id == id, ct);
+        if (card is null) return NotFound("CreditCard not found.");
+        if (!card.IsActive) return BadRequest("CreditCard is not active.");
+
+        if (req.Amount > card.CurrentDebt)
+            return BadRequest($"Payment exceeds debt. Debt={card.CurrentDebt}, Amount={req.Amount}");
+
+        card.CurrentDebt -= req.Amount;
+
+        await _context.SaveChangesAsync(ct);
+        await tx.CommitAsync(ct);
+
+        return Ok(new
+        {
+            cardId = card.Id,
+            amount = req.Amount,
+            card.CurrentDebt,
+            message = "Payment successful."
+        });
+    }
+
+    private static CreditCardResponse ToResponse(CreditCard x) =>
+        new(x.Id, x.CardNo, x.ExpireAt, x.Limit, x.CurrentDebt, x.IsActive, x.CustomerId);
+}
