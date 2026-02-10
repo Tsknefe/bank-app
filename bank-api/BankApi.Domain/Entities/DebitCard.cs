@@ -5,11 +5,14 @@ namespace BankApi.Domain.Entities;
 public class DebitCard
 {
     public Guid Id { get; set; } = Guid.NewGuid();
-
     public string CardNo { get; set; } = null!;
     public DateTime ExpireAt { get; set; }
+
     [JsonIgnore]
-    public string Cvv { get; set; } = null!;
+    public byte[] CvvHash { get; set; } = Array.Empty<byte>();
+
+    [JsonIgnore]
+    public byte[] CvvSalt { get; set; } = Array.Empty<byte>();
 
     public bool IsActive { get; set; } = true;
 

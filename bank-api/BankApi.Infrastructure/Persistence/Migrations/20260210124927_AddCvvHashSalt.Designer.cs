@@ -3,6 +3,7 @@ using System;
 using BankApi.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace BankApi.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(BankaDbContext))]
-    partial class BankaDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260210124927_AddCvvHashSalt")]
+    partial class AddCvvHashSalt
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -82,7 +85,7 @@ namespace BankApi.Infrastructure.Persistence.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
 
-                    b.Property<DateTime>("CreatedAtUtc")
+                    b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<Guid?>("CreditCardId")
@@ -101,7 +104,7 @@ namespace BankApi.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("AccountId");
 
-                    b.HasIndex("CreatedAtUtc");
+                    b.HasIndex("CreatedAt");
 
                     b.HasIndex("CreditCardId");
 

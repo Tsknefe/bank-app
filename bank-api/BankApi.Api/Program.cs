@@ -1,3 +1,4 @@
+using BankApi.Application.Services;
 using BankApi.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -11,6 +12,9 @@ builder.Services.AddControllers();
 
 builder.Services.AddDbContext<BankaDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+builder.Services.AddScoped<CreditCardAutoCollectionService>();
+
 
 var jwt = builder.Configuration.GetSection("Jwt");
 var key = Encoding.UTF8.GetBytes(jwt["Key"]!);
@@ -77,7 +81,6 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI(c =>
     {
         c.SwaggerEndpoint("/swagger/v1/swagger.json", "BankApi v1");
-        // Ýstersen direkt /swagger açýlsýn:
         // c.RoutePrefix = "swagger";
     });
 }

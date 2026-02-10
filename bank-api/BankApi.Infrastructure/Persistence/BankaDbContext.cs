@@ -17,6 +17,8 @@ namespace BankApi.Infrastructure.Persistence
         public DbSet<Transaction> Transactions => Set<Transaction>();
         public DbSet<DebitCard> DebitCards => Set<DebitCard>();
         public DbSet<CreditCard> CreditCards => Set<CreditCard>();
+        public DbSet<CardTransaction> CardTransactions => Set<CardTransaction>();
+        public DbSet<CreditCardPaymentInstruction> CreditCardPaymentInstructions => Set<CreditCardPaymentInstruction>();
 
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
