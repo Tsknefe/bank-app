@@ -15,6 +15,7 @@ namespace BankApi.Domain.Entities
         public decimal Balance { get; set; }
         public AccountType AccountType { get; set; }
         public bool IsActive { get; set; } = true;
+        public uint xmin { get; set; }
         public Guid CustomerId { get; set; }
         public Customer Customer { get; set; } = null!;
 

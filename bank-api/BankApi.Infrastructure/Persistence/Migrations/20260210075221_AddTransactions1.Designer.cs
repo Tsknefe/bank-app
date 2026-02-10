@@ -3,6 +3,7 @@ using System;
 using BankApi.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace BankApi.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(BankaDbContext))]
-    partial class BankaDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260210075221_AddTransactions1")]
+    partial class AddTransactions1
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -69,53 +72,6 @@ namespace BankApi.Infrastructure.Persistence.Migrations
                     b.ToTable("Accounts");
                 });
 
-            modelBuilder.Entity("BankApi.Domain.Entities.CreditCard", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("CardNo")
-                        .IsRequired()
-                        .HasMaxLength(16)
-                        .HasColumnType("character varying(16)");
-
-                    b.Property<decimal>("CurrentDebt")
-                        .ValueGeneratedOnAdd()
-                        .HasPrecision(18, 2)
-                        .HasColumnType("numeric(18,2)")
-                        .HasDefaultValue(0m);
-
-                    b.Property<Guid>("CustomerId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Cvv")
-                        .IsRequired()
-                        .HasMaxLength(3)
-                        .HasColumnType("character varying(3)");
-
-                    b.Property<DateTime>("ExpireAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<bool>("IsActive")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(true);
-
-                    b.Property<decimal>("Limit")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("numeric(18,2)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CardNo")
-                        .IsUnique();
-
-                    b.HasIndex("CustomerId");
-
-                    b.ToTable("CreditCards");
-                });
-
             modelBuilder.Entity("BankApi.Domain.Entities.Customer", b =>
                 {
                     b.Property<Guid>("Id")
@@ -151,43 +107,6 @@ namespace BankApi.Infrastructure.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("Customers");
-                });
-
-            modelBuilder.Entity("BankApi.Domain.Entities.DebitCard", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("AccountId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("CardNo")
-                        .IsRequired()
-                        .HasMaxLength(16)
-                        .HasColumnType("character varying(16)");
-
-                    b.Property<string>("Cvv")
-                        .IsRequired()
-                        .HasMaxLength(3)
-                        .HasColumnType("character varying(3)");
-
-                    b.Property<DateTime>("ExpireAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<bool>("IsActive")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(true);
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("AccountId");
-
-                    b.HasIndex("CardNo")
-                        .IsUnique();
-
-                    b.ToTable("DebitCards");
                 });
 
             modelBuilder.Entity("BankApi.Domain.Entities.Transaction", b =>
@@ -271,28 +190,6 @@ namespace BankApi.Infrastructure.Persistence.Migrations
                     b.Navigation("Customer");
                 });
 
-            modelBuilder.Entity("BankApi.Domain.Entities.CreditCard", b =>
-                {
-                    b.HasOne("BankApi.Domain.Entities.Customer", "Customer")
-                        .WithMany("CreditCards")
-                        .HasForeignKey("CustomerId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Customer");
-                });
-
-            modelBuilder.Entity("BankApi.Domain.Entities.DebitCard", b =>
-                {
-                    b.HasOne("BankApi.Domain.Entities.Account", "Account")
-                        .WithMany()
-                        .HasForeignKey("AccountId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Account");
-                });
-
             modelBuilder.Entity("BankApi.Domain.Entities.Transaction", b =>
                 {
                     b.HasOne("BankApi.Domain.Entities.Account", "Account")
@@ -307,8 +204,6 @@ namespace BankApi.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("BankApi.Domain.Entities.Customer", b =>
                 {
                     b.Navigation("Accounts");
-
-                    b.Navigation("CreditCards");
                 });
 #pragma warning restore 612, 618
         }

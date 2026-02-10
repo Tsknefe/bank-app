@@ -14,6 +14,10 @@ namespace BankApi.Infrastructure.Persistence
         public DbSet<Customer> Customers => Set<Customer>();
         public DbSet<Account> Accounts => Set<Account>();
         public DbSet<User> Users => Set<User>();
+        public DbSet<Transaction> Transactions => Set<Transaction>();
+        public DbSet<DebitCard> DebitCards => Set<DebitCard>();
+        public DbSet<CreditCard> CreditCards => Set<CreditCard>();
+
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

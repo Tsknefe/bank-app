@@ -12,5 +12,7 @@
         public bool IsActive { get; set; } = true;
 
         public ICollection<Account> Accounts { get; set; } = new List<Account>();
+        public List<CreditCard> CreditCards { get; set; } = new();
+
     }
 }
