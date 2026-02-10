@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\BankApi.Domain\BankApi.Domain.csproj" />
+    <ProjectReference Include="..\BankApi.Infrastructure\BankApi.Infrastructure.csproj" />
   </ItemGroup>
 
   <PropertyGroup>

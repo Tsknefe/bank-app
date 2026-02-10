@@ -39,11 +39,14 @@ public class DebitCardsController : ControllerBase
             ? DateTime.SpecifyKind(req.ExpireAt, DateTimeKind.Utc)
             : req.ExpireAt.ToUniversalTime();
 
+        var (hash, salt) = BankApi.Application.Security.CvvHasher.Hash(req.Cvv.Trim());
+
         var card = new DebitCard
         {
             AccountId = req.AccountId,
             CardNo = cardNo,
-            Cvv = req.Cvv.Trim(),
+            CvvHash=hash,
+            CvvSalt=salt,
             ExpireAt = expireUtc,
             IsActive = true
         };

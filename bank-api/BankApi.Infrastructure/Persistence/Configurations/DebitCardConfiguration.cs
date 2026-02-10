@@ -16,9 +16,11 @@ public class DebitCardConfiguration : IEntityTypeConfiguration<DebitCard>
 
         builder.HasIndex(x => x.CardNo).IsUnique();
 
-        builder.Property(x => x.Cvv)
-            .IsRequired()
-            .HasMaxLength(3);
+        builder.Property(x => x.CvvHash)
+            .IsRequired();
+
+        builder.Property(x => x.CvvSalt)
+            .IsRequired();
 
         builder.Property(x => x.IsActive)
             .HasDefaultValue(true);

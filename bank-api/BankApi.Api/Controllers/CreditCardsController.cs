@@ -1,5 +1,6 @@
 ﻿using BankApi.Application.Auth.Dtos;
 using BankApi.Domain.Entities;
+using BankApi.Domain.Enums;
 using BankApi.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -46,17 +47,24 @@ public class CreditCardsController : ControllerBase
         if (cardNoExists)
             return Conflict("Bu CardNo zaten kayıtlı.");
 
+        var (hash, salt) = BankApi.Application.Security.CvvHasher.Hash(req.Cvv.Trim());
+
+        var expireUtc = req.ExpireAt.Kind == DateTimeKind.Unspecified
+            ? DateTime.SpecifyKind(req.ExpireAt, DateTimeKind.Utc)
+            : req.ExpireAt.ToUniversalTime();
+
         var card = new CreditCard
         {
             CustomerId = req.CustomerId,
             CardNo = cardNo,
-            Cvv = req.Cvv.Trim(),
-            ExpireAt = req.ExpireAt,
+            CvvHash = hash,
+            CvvSalt = salt,
+            ExpireAt = expireUtc,
             Limit = req.Limit,
             CurrentDebt = 0m,
             IsActive = true
         };
-
+        
         _context.CreditCards.Add(card);
         await _context.SaveChangesAsync(ct);
 
@@ -125,6 +133,16 @@ public class CreditCardsController : ControllerBase
             return BadRequest($"Limit exceeded. Limit={card.Limit}, CurrentDebt={card.CurrentDebt}, Amount={req.Amount}");
 
         card.CurrentDebt = newDebt;
+        _context.CardTransactions.Add(new CardTransaction
+        {
+            Type = BankApi.Domain.Enums.CardTransactionType.Spend,
+            Amount = req.Amount,
+            Description = req.Description ?? "CreditCard Spend",
+            CreditCardId = card.Id,
+            AccountId = null, 
+            CreatedAtUtc = DateTime.UtcNow
+        });
+
 
         await _context.SaveChangesAsync(ct);
         await tx.CommitAsync(ct);
@@ -140,35 +158,66 @@ public class CreditCardsController : ControllerBase
     }
 
 
+
     [HttpPost("{id:guid}/pay")]
     public async Task<IActionResult> Pay([FromRoute] Guid id, [FromBody] CreditCardPayRequest req, CancellationToken ct)
     {
         if (req.Amount <= 0)
             return BadRequest("Amount 0'dan büyük olmalıdır.");
 
-        await using var tx = await _context.Database.BeginTransactionAsync(ct);
+        if (req.AccountId == Guid.Empty)
+            return BadRequest("AccountId zorunludur.");
 
         var card = await _context.CreditCards.FirstOrDefaultAsync(x => x.Id == id, ct);
         if (card is null) return NotFound("CreditCard not found.");
         if (!card.IsActive) return BadRequest("CreditCard is not active.");
 
+        var nowUtc = DateTime.UtcNow;
+        var expUtc = card.ExpireAt.Kind == DateTimeKind.Unspecified
+            ? DateTime.SpecifyKind(card.ExpireAt, DateTimeKind.Utc)
+            : card.ExpireAt.ToUniversalTime();
+        if (expUtc <= nowUtc) return BadRequest("CreditCard expired.");
+
         if (req.Amount > card.CurrentDebt)
             return BadRequest($"Payment exceeds debt. Debt={card.CurrentDebt}, Amount={req.Amount}");
 
-        card.CurrentDebt -= req.Amount;
+        var account = await _context.Accounts.FirstOrDefaultAsync(x => x.Id == req.AccountId, ct);
+        if (account is null) return NotFound("Account not found.");
+        if (!account.IsActive) return BadRequest("Account is not active.");
 
+        var scheduledUtc = req.ScheduledAtUtc ?? nowUtc.Date.AddDays(1);
+        if (scheduledUtc.Kind == DateTimeKind.Unspecified)
+            scheduledUtc = DateTime.SpecifyKind(scheduledUtc, DateTimeKind.Utc);
+        else
+            scheduledUtc = scheduledUtc.ToUniversalTime();
+
+        if (scheduledUtc < nowUtc)
+            return BadRequest("ScheduledAtUtc cannot be passed time");
+
+        var instruction = new CreditCardPaymentInstruction
+        {
+            CreditCardId = card.Id,
+            AccountId = account.Id,
+            Amount = req.Amount,
+            ScheduledAtUtc = scheduledUtc,
+            Status = PaymentInstructionStatus.Pending
+        };
+
+        _context.CreditCardPaymentInstructions.Add(instruction);
         await _context.SaveChangesAsync(ct);
-        await tx.CommitAsync(ct);
 
         return Ok(new
         {
+            instructionId = instruction.Id,
             cardId = card.Id,
-            amount = req.Amount,
-            card.CurrentDebt,
-            message = "Payment successful."
+            fromAccountId = account.Id,
+            amount = instruction.Amount,
+            scheduledAtUtc = instruction.ScheduledAtUtc,
+            status = instruction.Status.ToString(),
+            message = "Payment instruction created. It will be collected on the scheduled date if balance is sufficient."
         });
     }
 
     private static CreditCardResponse ToResponse(CreditCard x) =>
-        new(x.Id, x.CardNo, x.ExpireAt, x.Limit, x.CurrentDebt, x.IsActive, x.CustomerId);
+            new(x.Id, x.CardNo, x.ExpireAt, x.Limit, x.CurrentDebt, x.IsActive, x.CustomerId);
 }
