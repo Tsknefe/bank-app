@@ -15,6 +15,13 @@ public class CreditCardConfiguration : IEntityTypeConfiguration<CreditCard>
             .HasMaxLength(16);
 
         builder.HasIndex(x => x.CardNo).IsUnique();
+        builder.HasCheckConstraint("CK_creditcard_dueday", @"""DueDay"" >=1 AND ""DueDay"" <=28");
+
+        
+        builder.HasOne(x=>x.AutoPayAccount)
+            .WithMany()
+            .HasForeignKey(x => x.AutoPayAccountId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.Property(x => x.CvvHash)
             .IsRequired();

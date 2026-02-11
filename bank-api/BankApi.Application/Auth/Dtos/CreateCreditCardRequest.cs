@@ -7,4 +7,6 @@ public class CreateCreditCardRequest
     public string Cvv { get; set; } = null!;
     public DateTime ExpireAt { get; set; }
     public decimal Limit { get; set; }
+    public int DueDay = 1;
+    public Guid? AutoPayAccountId = null;
 }

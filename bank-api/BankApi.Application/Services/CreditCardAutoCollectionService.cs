@@ -19,6 +19,8 @@ public class CreditCardAutoCollectionService
         await using var dbtx = await _context.Database.BeginTransactionAsync(ct);
 
         var due = await _context.CreditCardPaymentInstructions
+            .Include(x=>x.CreditCard)
+            .Include(x=>x.Account)
             .Where(x => x.Status == PaymentInstructionStatus.Pending && x.ScheduledAtUtc <= nowUtc)
             .OrderBy(x => x.ScheduledAtUtc)
             .ToListAsync(ct);

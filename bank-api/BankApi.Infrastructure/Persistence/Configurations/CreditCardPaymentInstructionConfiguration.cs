@@ -25,6 +25,8 @@ public class CreditCardPaymentInstructionConfiguration : IEntityTypeConfiguratio
             .HasForeignKey(x => x.AccountId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        builder.HasIndex(x => new { x.CreditCardId, x.ScheduledAtUtc })
+            .IsUnique();
         builder.HasIndex(x => new { x.Status, x.ScheduledAtUtc });
         builder.HasIndex(x => x.CreditCardId);
         builder.HasIndex(x => x.AccountId);
