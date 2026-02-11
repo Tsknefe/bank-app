@@ -1,3 +1,4 @@
+using BankApi.Api.BackgroundServices;
 using BankApi.Application.Services;
 using BankApi.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -14,6 +15,7 @@ builder.Services.AddDbContext<BankaDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services.AddScoped<CreditCardAutoCollectionService>();
+builder.Services.AddHostedService<CreditCardAutoCollectionHostedService>();
 
 
 var jwt = builder.Configuration.GetSection("Jwt");

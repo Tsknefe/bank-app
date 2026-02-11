@@ -17,6 +17,10 @@ public class CreditCard
     public decimal Limit { get; set; }
     public decimal CurrentDebt { get; set; }
     public bool IsActive { get; set; } = true;
+    public int DueDay { get; set; } = 1; 
+    public Guid? AutoPayAccountId { get; set; }
+    public Account? AutoPayAccount { get; set; }
+
 
     public Guid CustomerId { get; set; }
     public Customer Customer { get; set; } = null!;

@@ -64,7 +64,7 @@ public class CreditCardsController : ControllerBase
             CurrentDebt = 0m,
             IsActive = true
         };
-        
+
         _context.CreditCards.Add(card);
         await _context.SaveChangesAsync(ct);
 
@@ -139,7 +139,7 @@ public class CreditCardsController : ControllerBase
             Amount = req.Amount,
             Description = req.Description ?? "CreditCard Spend",
             CreditCardId = card.Id,
-            AccountId = null, 
+            AccountId = null,
             CreatedAtUtc = DateTime.UtcNow
         });
 
@@ -163,16 +163,14 @@ public class CreditCardsController : ControllerBase
     public async Task<IActionResult> Pay([FromRoute] Guid id, [FromBody] CreditCardPayRequest req, CancellationToken ct)
     {
         if (req.Amount <= 0)
-            return BadRequest("Amount 0'dan büyük olmalıdır.");
-
-        if (req.AccountId == Guid.Empty)
-            return BadRequest("AccountId zorunludur.");
+            return BadRequest("Amount must be more from zero");
 
         var card = await _context.CreditCards.FirstOrDefaultAsync(x => x.Id == id, ct);
         if (card is null) return NotFound("CreditCard not found.");
         if (!card.IsActive) return BadRequest("CreditCard is not active.");
 
         var nowUtc = DateTime.UtcNow;
+
         var expUtc = card.ExpireAt.Kind == DateTimeKind.Unspecified
             ? DateTime.SpecifyKind(card.ExpireAt, DateTimeKind.Utc)
             : card.ExpireAt.ToUniversalTime();
@@ -181,25 +179,32 @@ public class CreditCardsController : ControllerBase
         if (req.Amount > card.CurrentDebt)
             return BadRequest($"Payment exceeds debt. Debt={card.CurrentDebt}, Amount={req.Amount}");
 
-        var account = await _context.Accounts.FirstOrDefaultAsync(x => x.Id == req.AccountId, ct);
+        if (card.AutoPayAccountId is null || card.AutoPayAccountId == Guid.Empty)
+            return BadRequest("AutoPayAccountId is not configured. First configure autopay.");
+
+        if (card.DueDay < 1 || card.DueDay > 28)
+            return BadRequest("DueDay invalid its must between the 1 and 28");
+
+        var account = await _context.Accounts.FirstOrDefaultAsync(x => x.Id == card.AutoPayAccountId.Value, ct);
         if (account is null) return NotFound("Account not found.");
         if (!account.IsActive) return BadRequest("Account is not active.");
 
-        var scheduledUtc = req.ScheduledAtUtc ?? nowUtc.Date.AddDays(1);
-        if (scheduledUtc.Kind == DateTimeKind.Unspecified)
-            scheduledUtc = DateTime.SpecifyKind(scheduledUtc, DateTimeKind.Utc);
-        else
-            scheduledUtc = scheduledUtc.ToUniversalTime();
+        var scheduledAtUtc =NextDueDateUtc(card.DueDay, nowUtc);
 
-        if (scheduledUtc < nowUtc)
-            return BadRequest("ScheduledAtUtc cannot be passed time");
+        var exists = await _context.CreditCardPaymentInstructions.AnyAsync(x =>
+            x.CreditCardId == card.Id &&
+            x.Status == PaymentInstructionStatus.Pending &&
+            x.ScheduledAtUtc == scheduledAtUtc, ct);
+
+        if (exists)
+            return Conflict("The payment request already exist");
 
         var instruction = new CreditCardPaymentInstruction
         {
             CreditCardId = card.Id,
             AccountId = account.Id,
             Amount = req.Amount,
-            ScheduledAtUtc = scheduledUtc,
+            ScheduledAtUtc = scheduledAtUtc,
             Status = PaymentInstructionStatus.Pending
         };
 
@@ -210,7 +215,7 @@ public class CreditCardsController : ControllerBase
         {
             instructionId = instruction.Id,
             cardId = card.Id,
-            fromAccountId = account.Id,
+            autoPayAccountId=account.Id,
             amount = instruction.Amount,
             scheduledAtUtc = instruction.ScheduledAtUtc,
             status = instruction.Status.ToString(),
@@ -218,6 +223,49 @@ public class CreditCardsController : ControllerBase
         });
     }
 
+    static DateTime NextDueDateUtc(int dueDay, DateTime nowUtc)
+    {
+        var thisMonthDue = new DateTime(nowUtc.Year, nowUtc.Month, dueDay, 0, 0, 0, DateTimeKind.Utc);
+        if (nowUtc <= thisMonthDue) return thisMonthDue;
+
+        var next = nowUtc.AddMonths(1);
+        return new DateTime(next.Year, next.Month, dueDay, 0, 0, 0, DateTimeKind.Utc);
+    }
+
     private static CreditCardResponse ToResponse(CreditCard x) =>
             new(x.Id, x.CardNo, x.ExpireAt, x.Limit, x.CurrentDebt, x.IsActive, x.CustomerId);
+
+    [HttpPatch("{id:guid}/autopay")]
+    public async Task<IActionResult> ConfigureAutoPay([FromRoute] Guid id, [FromBody] ConfigureAutoPayRequest req, CancellationToken ct)
+    {
+        if (req.AutoPayAccountId == Guid.Empty)
+            return BadRequest("AutoPayAccountId zorunludur.");
+
+        if (req.DueDay < 1 || req.DueDay > 28)
+            return BadRequest("DueDay 1-28 arasında olmalıdır.");
+
+        var card = await _context.CreditCards.FirstOrDefaultAsync(x => x.Id == id, ct);
+        if (card is null) return NotFound("CreditCard not found.");
+
+        var account = await _context.Accounts.FirstOrDefaultAsync(x => x.Id == req.AutoPayAccountId, ct);
+        if (account is null) return NotFound("Account not found.");
+        if (!account.IsActive) return BadRequest("Account is not active.");
+
+        if (account.CustomerId != card.CustomerId)
+            return BadRequest("AutoPay account must belong to the same customer.");
+
+        card.AutoPayAccountId = account.Id;
+        card.DueDay = req.DueDay;
+
+        await _context.SaveChangesAsync(ct);
+
+        return Ok(new
+        {
+            cardId = card.Id,
+            card.AutoPayAccountId,
+            card.DueDay,
+            message = "AutoPay configured."
+        });
+    }
+
 }
