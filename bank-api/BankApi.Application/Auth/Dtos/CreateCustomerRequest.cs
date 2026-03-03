@@ -1,0 +1,17 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace BankApi.Application.Auth.Dtos
+{
+    public class CreateCustomerRequest
+    {
+        public string FirstName { get; set; } = null!;
+        public string LastName { get; set; } = null!;
+        public string IdentityNumber { get; set; } = null!;
+        public DateTime DateOfBirth { get; set; }
+
+    }
+}
